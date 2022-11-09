@@ -1,0 +1,13 @@
+<div class="container">
+  <form [formGroup]="bookingForm" (ngSubmit)="onSubmit()">
+    <textarea
+      id="bookingInput"
+      cols="30"
+      rows="10"
+      formControlName="bookingInput"
+    ></textarea>
+    <button type="submit">Submit</button>
+  </form>
+
+  <div>{{ bookingInput?.value }}</div>
+</div>

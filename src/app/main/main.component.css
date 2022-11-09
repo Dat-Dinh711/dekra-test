@@ -1,0 +1,8 @@
+.container {
+  display: flex;
+}
+
+.container div,
+.container form {
+  width: 50%;
+}
