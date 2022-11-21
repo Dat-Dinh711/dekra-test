@@ -33,9 +33,9 @@ export class MainComponent implements OnInit {
   }
 
   calculateBookingTime(item: any) {
-    const bookingTime = item.bookingDay + ' ' + item.bookingHour;
+    const bookingTime = item?.bookingDay + ' ' + item?.bookingHour;
     const bookingEnd = new Date(
-      new Date(bookingTime).getTime() + parseInt(item.bookingLength) * 3600000
+      new Date(bookingTime).getTime() + parseInt(item?.bookingLength) * 3600000
     );
     return (
       ('0' + bookingEnd.getHours()).slice(-2) +
@@ -67,11 +67,16 @@ export class MainComponent implements OnInit {
 
   removeRequestsDuplicationBookingTime(arr: any[]) {
     arr.forEach((item: any, index: number) => {
-      const bookingEndString = this.calculateBookingTime(item);
+      const bookingEndStringCurrentRequest = this.calculateBookingTime(item);
+      const bookingEndStringNextRequest = this.calculateBookingTime(
+        arr[index + 1]
+      );
 
       if (
-        item.bookingHour === arr[index + 1]?.bookingHour ||
-        bookingEndString > arr[index + 1]?.bookingHour
+        (item.bookingHour <= arr[index + 1]?.bookingHour &&
+          arr[index + 1]?.bookingHour < bookingEndStringCurrentRequest) ||
+        (item.bookingHour < bookingEndStringNextRequest &&
+          bookingEndStringNextRequest <= bookingEndStringCurrentRequest)
       ) {
         arr.splice(index + 1, 1);
       }
@@ -96,22 +101,21 @@ export class MainComponent implements OnInit {
 
   onSubmit() {
     this.result = '';
-    const bookingInput: string = this.bookingInput?.value;
-    const arrAfterConvert: string[] = bookingInput.split('\n');
-    const startWorkingHour = arrAfterConvert[0].slice(0, 4);
-    const endWorkingHour = arrAfterConvert[0].slice(-4);
+    let bookingInput: string = this.bookingInput?.value;
+    bookingInput = bookingInput.replace(/\s+/g, ' ').trim();
+    const arrAfterConvert: string[] = bookingInput.split(' ');
     const workingHour = {
-      start: startWorkingHour.slice(0, 2) + ':' + startWorkingHour.slice(2),
-      end: endWorkingHour.slice(0, 2) + ':' + endWorkingHour.slice(2),
+      start: arrAfterConvert[0].slice(0, 2) + ':' + arrAfterConvert[0].slice(2),
+      end: arrAfterConvert[1].slice(0, 2) + ':' + arrAfterConvert[1].slice(2),
     };
-    arrAfterConvert.splice(0, 1);
+    arrAfterConvert.splice(0, 2);
 
     const bookingRequest: Array<string[]> = [];
     let temp: string[] = [];
 
-    arrAfterConvert.forEach((item, index) => {
+    arrAfterConvert.forEach((item: string, index: number) => {
       temp.push(item);
-      if ((index + 1) % 3 === 0) {
+      if ((index + 1) % 6 === 0) {
         bookingRequest.push(temp);
         temp = [];
       }
@@ -119,11 +123,11 @@ export class MainComponent implements OnInit {
 
     const newArr: Object[] = bookingRequest.map((item) => {
       return {
-        requestTime: item[0],
-        employeeId: item[1],
-        bookingDay: item[2].slice(0, 10),
-        bookingHour: item[2].slice(11, 16),
-        bookingLength: item[2].slice(-1),
+        requestTime: item[0] + ' ' + item[1],
+        employeeId: item[2],
+        bookingDay: item[3],
+        bookingHour: item[4],
+        bookingLength: item[5],
       };
     });
 
