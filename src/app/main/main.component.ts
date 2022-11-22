@@ -10,7 +10,8 @@ import * as moment from 'moment';
 export class MainComponent implements OnInit {
   public bookingForm: FormGroup = new FormGroup({});
   public result: string = '';
-  public dateFormat = 'YYYY-MM-DD LT';
+  public dateTimeFormat = 'YYYY-MM-DD hh:mm:ss';
+  public workingTimeFormat = 'HH:mm';
 
   constructor() {}
 
@@ -24,25 +25,88 @@ export class MainComponent implements OnInit {
     return this.bookingForm.get('bookingInput');
   }
 
-  validateDateTime(item: any) {
-    // create bookingTime from bookingDay and bookingHour
-    const bookingTime = item.bookingDay + ' ' + item.bookingHour;
-
-    const isDateTimeRequestValid = moment(
-      moment(item.requestTime).format(this.dateFormat),
-      this.dateFormat,
-      true
-    ).isValid();
-
-    const isDateTimeBookingValid = moment(
-      moment(bookingTime).format(this.dateFormat),
-      this.dateFormat,
-      true
-    ).isValid();
-
-    if (!isDateTimeRequestValid || !isDateTimeBookingValid) {
-      throw new Error('Date/Time in input maybe has wrong format.');
+  onSubmit() {
+    if (this.bookingInput?.value === '') {
+      throw new Error('Input must not be empty');
     }
+
+    let bookingInput: string = this.bookingInput?.value
+      .replace(/\s+/g, ' ')
+      .trim();
+    const arrAfterConvert: string[] = bookingInput.split(' ');
+    const workingHour = {
+      start: arrAfterConvert[0].slice(0, 2) + ':' + arrAfterConvert[0].slice(2),
+      end: arrAfterConvert[1].slice(0, 2) + ':' + arrAfterConvert[1].slice(2),
+    };
+
+    const isStartWorkingHour = this.validateDateTime(
+      workingHour.start,
+      this.workingTimeFormat
+    );
+    const isEndWorkingHour = this.validateDateTime(
+      workingHour.end,
+      this.workingTimeFormat
+    );
+
+    if (!isStartWorkingHour || !isEndWorkingHour) {
+      throw new Error('Start or End working hour is in valid ');
+    }
+    arrAfterConvert.splice(0, 2);
+
+    // Split items in a request into an array
+    const bookingRequest: Array<string[]> = [];
+    let temp: string[] = [];
+
+    arrAfterConvert.forEach((item: string, index: number) => {
+      temp.push(item);
+      if ((index + 1) % 6 === 0) {
+        bookingRequest.push(temp);
+        temp = [];
+      }
+    });
+
+    const newBookingRequest = bookingRequest.map((item) => ({
+      requestTime: item[0] + ' ' + item[1],
+      employeeId: item[2],
+      bookingDay: item[3],
+      bookingHour: item[4],
+      bookingLength: item[5],
+    }));
+
+    // Validate request and booking time
+    newBookingRequest.forEach((item) => {
+      const isRequestTimeValid = this.validateDateTime(
+        moment(item.requestTime).format(this.dateTimeFormat),
+        this.dateTimeFormat
+      );
+
+      const bookingTime = item.bookingDay + ' ' + item.bookingHour;
+      const isBookingTimeValid = this.validateDateTime(
+        moment(bookingTime).format(this.dateTimeFormat),
+        this.dateTimeFormat
+      );
+
+      if (!isRequestTimeValid || !isBookingTimeValid) {
+        throw new Error('Date/Time of request or booking is invalid');
+      }
+    });
+
+    // Group array by 'bookingDay'
+    let arrAfterReduce = this.groupBy(newBookingRequest, 'bookingDay');
+
+    for (var key in arrAfterReduce) {
+      this.sortArrayByRequestTime(arrAfterReduce[key]);
+
+      this.removeRequestsInvalidBookingTime(arrAfterReduce[key], workingHour);
+
+      this.removeRequestsDuplicationBookingTime(arrAfterReduce[key]);
+    }
+
+    this.transformResult(arrAfterReduce);
+  }
+
+  validateDateTime(dateTime: any, dateTimeformat: string) {
+    return moment(dateTime, dateTimeformat, true).isValid();
   }
 
   /**
@@ -78,7 +142,7 @@ export class MainComponent implements OnInit {
       requestBooking?.bookingDay + ' ' + requestBooking?.bookingHour;
     const bookingEnd = new Date(
       new Date(bookingTime).getTime() +
-        parseInt(requestBooking?.bookingLength) * 3600000
+        parseFloat(requestBooking?.bookingLength) * 3600000
     );
     return (
       ('0' + bookingEnd.getHours()).slice(-2) +
@@ -92,6 +156,7 @@ export class MainComponent implements OnInit {
       const bookingEndString = this.calculateBookingTime(item);
 
       if (
+        item.bookingLength === '0' ||
         item.bookingHour > workingHour.end ||
         item.bookingHour < workingHour.start ||
         bookingEndString > workingHour.end
@@ -178,57 +243,5 @@ export class MainComponent implements OnInit {
       this.result = `${this.result}<br>${resultBooking}`;
       resultBooking = '';
     }
-  }
-
-  onSubmit() {
-    if (this.bookingInput?.value === '') {
-      throw new Error('Input must not be empty');
-    }
-
-    let bookingInput: string = this.bookingInput?.value
-      .replace(/\s+/g, ' ')
-      .trim();
-    const arrAfterConvert: string[] = bookingInput.split(' ');
-    const workingHour = {
-      start: arrAfterConvert[0].slice(0, 2) + ':' + arrAfterConvert[0].slice(2),
-      end: arrAfterConvert[1].slice(0, 2) + ':' + arrAfterConvert[1].slice(2),
-    };
-    arrAfterConvert.splice(0, 2);
-
-    // Split items in a request into an array
-    const bookingRequest: Array<string[]> = [];
-    let temp: string[] = [];
-
-    arrAfterConvert.forEach((item: string, index: number) => {
-      temp.push(item);
-      if ((index + 1) % 6 === 0) {
-        bookingRequest.push(temp);
-        temp = [];
-      }
-    });
-
-    const newBookingRequest: Object[] = bookingRequest.map((item) => ({
-      requestTime: item[0] + ' ' + item[1],
-      employeeId: item[2],
-      bookingDay: item[3],
-      bookingHour: item[4],
-      bookingLength: item[5],
-    }));
-
-    // Validate request and booking time
-    newBookingRequest.forEach((item) => this.validateDateTime(item));
-
-    // Group array by 'bookingDay'
-    let arrAfterReduce = this.groupBy(newBookingRequest, 'bookingDay');
-
-    for (var key in arrAfterReduce) {
-      this.sortArrayByRequestTime(arrAfterReduce[key]);
-
-      this.removeRequestsInvalidBookingTime(arrAfterReduce[key], workingHour);
-
-      this.removeRequestsDuplicationBookingTime(arrAfterReduce[key]);
-    }
-
-    this.transformResult(arrAfterReduce);
   }
 }
