@@ -25,6 +25,7 @@ export class MainComponent implements OnInit {
   }
 
   validateDateTime(item: any) {
+    // create bookingTime from bookingDay and bookingHour
     const bookingTime = item.bookingDay + ' ' + item.bookingHour;
 
     const isDateTimeRequestValid = moment(
@@ -44,6 +45,12 @@ export class MainComponent implements OnInit {
     }
   }
 
+  /**
+   * Return a new array was grouped by param key
+   * @param arr The array want group
+   * @param key The key to group
+   * @returns A new array was grouped by param key
+   */
   groupBy(arr: any[], key: string) {
     return arr.reduce(
       (result, item) => ({
@@ -61,10 +68,17 @@ export class MainComponent implements OnInit {
     );
   }
 
-  calculateBookingTime(item: any) {
-    const bookingTime = item?.bookingDay + ' ' + item?.bookingHour;
+  /**
+   * Return the end time of a booking
+   * @param requestBooking  An object includes information about request booking
+   * @returns The end time of a booking
+   */
+  calculateBookingTime(requestBooking: any) {
+    const bookingTime =
+      requestBooking?.bookingDay + ' ' + requestBooking?.bookingHour;
     const bookingEnd = new Date(
-      new Date(bookingTime).getTime() + parseInt(item?.bookingLength) * 3600000
+      new Date(bookingTime).getTime() +
+        parseInt(requestBooking?.bookingLength) * 3600000
     );
     return (
       ('0' + bookingEnd.getHours()).slice(-2) +
@@ -82,24 +96,31 @@ export class MainComponent implements OnInit {
         item.bookingHour < workingHour.start ||
         bookingEndString > workingHour.end
       ) {
-        arr.splice(index, 1);
+        arr.splice(index, 1, null);
       }
     });
   }
 
+  /**
+   * Return a boolean variable to check the booking time of the request is valid or not
+   * @param requestBooking An object includes information about request booking
+   * @param bookingTimeList An object includes start and end time of valid request booking
+   * @param bookingEndOfCurrentRequest End time of the booking of current request
+   * @returns A boolean variable to check the booking time of the request is valid or not
+   */
   checkValidBookingTime(
-    item: any,
+    requestBooking: any,
     bookingTimeList: Array<any>,
-    bookingEndStringCurrentRequest: string
+    bookingEndOfCurrentRequest: string
   ) {
     let isValid: boolean = true;
 
     bookingTimeList.forEach((bookingTime) => {
       if (
-        (bookingTime.start <= item.bookingHour &&
-          item.bookingHour < bookingTime.end) ||
-        (bookingTime.start < bookingEndStringCurrentRequest &&
-          bookingEndStringCurrentRequest <= bookingTime.end)
+        (bookingTime.start <= requestBooking.bookingHour &&
+          requestBooking.bookingHour < bookingTime.end) ||
+        (bookingTime.start < bookingEndOfCurrentRequest &&
+          bookingEndOfCurrentRequest <= bookingTime.end)
       ) {
         isValid = false;
       }
@@ -109,28 +130,39 @@ export class MainComponent implements OnInit {
     return isValid;
   }
 
+  /**
+   * Remove the request has booking time duplicate with booking time of the previous request
+   * @param arr The array containing requests booking
+   */
   removeRequestsDuplicationBookingTime(arr: any[]) {
     let bookingTimeList: Array<any> = [];
     arr.forEach((item: any, index: number) => {
-      const bookingEndStringCurrentRequest = this.calculateBookingTime(item);
-      const isValid: boolean = this.checkValidBookingTime(
-        item,
-        bookingTimeList,
-        bookingEndStringCurrentRequest
-      );
+      if (item !== null) {
+        const bookingEndOfCurrentRequest = this.calculateBookingTime(item);
+        const isValid: boolean = this.checkValidBookingTime(
+          item,
+          bookingTimeList,
+          bookingEndOfCurrentRequest
+        );
 
-      if (!isValid) {
-        arr.splice(index, 1, null);
-      } else {
-        bookingTimeList.push({
-          start: item.bookingHour,
-          end: bookingEndStringCurrentRequest,
-        });
+        if (!isValid) {
+          arr.splice(index, 1, null);
+        } else {
+          bookingTimeList.push({
+            start: item.bookingHour,
+            end: bookingEndOfCurrentRequest,
+          });
+        }
       }
     });
   }
 
+  /**
+   * Transform result to render UI
+   * @param arr The array of result
+   */
   transformResult(arr: any[]) {
+    this.result = '';
     let resultBooking: string = '';
     for (var key in arr) {
       let str = '';
@@ -144,11 +176,11 @@ export class MainComponent implements OnInit {
       });
 
       this.result = `${this.result}<br>${resultBooking}`;
+      resultBooking = '';
     }
   }
 
   onSubmit() {
-    this.result = '';
     if (this.bookingInput?.value === '') {
       throw new Error('Input must not be empty');
     }
