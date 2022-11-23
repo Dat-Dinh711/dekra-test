@@ -2,6 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { FormGroup, FormControl, Validators } from '@angular/forms';
 import * as moment from 'moment';
 
+import { MainService } from './main.service';
+
 @Component({
   selector: 'app-main',
   templateUrl: './main.component.html',
@@ -13,7 +15,7 @@ export class MainComponent implements OnInit {
   public dateTimeFormat = 'YYYY-MM-DD hh:mm:ss';
   public workingTimeFormat = 'HH:mm';
 
-  constructor() {}
+  constructor(private mainService: MainService) {}
 
   ngOnInit(): void {
     this.bookingForm = new FormGroup({
@@ -33,23 +35,25 @@ export class MainComponent implements OnInit {
     let bookingInput: string = this.bookingInput?.value
       .replace(/\s+/g, ' ')
       .trim();
+
     const arrAfterConvert: string[] = bookingInput.split(' ');
     const workingHour = {
       start: arrAfterConvert[0].slice(0, 2) + ':' + arrAfterConvert[0].slice(2),
       end: arrAfterConvert[1].slice(0, 2) + ':' + arrAfterConvert[1].slice(2),
     };
 
-    const isStartWorkingHour = this.validateDateTime(
+    const isStartWorkingHour = this.mainService.validateDateTime(
       workingHour.start,
       this.workingTimeFormat
     );
-    const isEndWorkingHour = this.validateDateTime(
+    const isEndWorkingHour = this.mainService.validateDateTime(
       workingHour.end,
       this.workingTimeFormat
     );
 
     if (!isStartWorkingHour || !isEndWorkingHour) {
-      throw new Error('Start or End working hour is in valid ');
+      this.result = '';
+      throw new Error('Start or End working hour is invalid ');
     }
     arrAfterConvert.splice(0, 2);
 
@@ -71,65 +75,64 @@ export class MainComponent implements OnInit {
       bookingDay: item[3],
       bookingHour: item[4],
       bookingLength: item[5],
+      bookingTime: item[3] + ' ' + item[4],
     }));
 
     // Validate request and booking time
     newBookingRequest.forEach((item) => {
-      const isRequestTimeValid = this.validateDateTime(
+      const isRequestTimeValid = this.mainService.validateDateTime(
         moment(item.requestTime).format(this.dateTimeFormat),
         this.dateTimeFormat
       );
 
       const bookingTime = item.bookingDay + ' ' + item.bookingHour;
-      const isBookingTimeValid = this.validateDateTime(
+      const isBookingTimeValid = this.mainService.validateDateTime(
         moment(bookingTime).format(this.dateTimeFormat),
         this.dateTimeFormat
       );
 
       if (!isRequestTimeValid || !isBookingTimeValid) {
+        this.result = '';
         throw new Error('Date/Time of request or booking is invalid');
+      }
+
+      if (item.bookingLength === '0' || item.bookingLength === ' ') {
+        throw new Error('Invalid booking time');
       }
     });
 
     // Group array by 'bookingDay'
-    let arrAfterReduce = this.groupBy(newBookingRequest, 'bookingDay');
+    let arrAfterGroup = this.mainService.groupBy(
+      newBookingRequest,
+      'bookingDay'
+    );
 
-    for (var key in arrAfterReduce) {
-      this.sortArrayByRequestTime(arrAfterReduce[key]);
+    const arrAfterSortByKey = this.mainService.sortObjectByKey(arrAfterGroup);
 
-      this.removeRequestsInvalidBookingTime(arrAfterReduce[key], workingHour);
+    for (let key in arrAfterSortByKey) {
+      this.mainService.sortArrayByDateTime(
+        arrAfterSortByKey[key],
+        'requestTime'
+      );
 
-      this.removeRequestsDuplicationBookingTime(arrAfterReduce[key]);
+      this.removeRequestsInvalidBookingTime(
+        arrAfterSortByKey[key],
+        workingHour
+      );
+
+      this.removeRequestsDuplicationBookingTime(arrAfterSortByKey[key]);
+
+      arrAfterSortByKey[key] = arrAfterSortByKey[key].filter(
+        (item: any) => item !== null
+      );
+
+      this.mainService.sortArrayByDateTime(
+        arrAfterSortByKey[key],
+        'bookingTime'
+      );
     }
 
-    this.transformResult(arrAfterReduce);
-  }
-
-  validateDateTime(dateTime: any, dateTimeformat: string) {
-    return moment(dateTime, dateTimeformat, true).isValid();
-  }
-
-  /**
-   * Return a new array was grouped by param key
-   * @param arr The array want group
-   * @param key The key to group
-   * @returns A new array was grouped by param key
-   */
-  groupBy(arr: any[], key: string) {
-    return arr.reduce(
-      (result, item) => ({
-        ...result,
-        [item[key]]: [...(result[item[key]] || []), item],
-      }),
-      {}
-    );
-  }
-
-  sortArrayByRequestTime(arr: any[]) {
-    arr.sort(
-      (a: any, b: any) =>
-        new Date(a.requestTime).getTime() - new Date(b.requestTime).getTime()
-    );
+    this.transformResult(arrAfterSortByKey);
   }
 
   /**
@@ -156,7 +159,6 @@ export class MainComponent implements OnInit {
       const bookingEndString = this.calculateBookingTime(item);
 
       if (
-        item.bookingLength === '0' ||
         item.bookingHour > workingHour.end ||
         item.bookingHour < workingHour.start ||
         bookingEndString > workingHour.end
@@ -229,7 +231,7 @@ export class MainComponent implements OnInit {
   transformResult(arr: any[]) {
     this.result = '';
     let resultBooking: string = '';
-    for (var key in arr) {
+    for (let key in arr) {
       let str = '';
       arr[key].forEach((item: any) => {
         if (item !== null) {
