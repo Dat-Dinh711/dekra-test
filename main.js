@@ -1,12 +1,17 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, ipcMain } = require("electron");
+const url = require("url");
+const path = require("path");
+
+require("update-electron-app")();
 
 const createWindow = () => {
-  const win = new BrowserWindow({
+  const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
   });
 
-  win.loadFile("index.html");
+  ipcMain.handle("ping", () => "pong");
+  mainWindow.loadFile("dist/dekra-test/index.html");
 };
 
 app.whenReady().then(() => {

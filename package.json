@@ -2,13 +2,22 @@
   "name": "dekra-test",
   "version": "0.0.0",
   "main": "main.js",
+  "author": "Dat Dinh",
+  "description": "dekra-test",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Dat-Dinh711/dekra-test.git"
+  },
   "scripts": {
     "ng": "ng",
-    "start": "electron .",
-    "start:nodemon": "nodemon --watch main.js --exec npm start",
+    "start": "electron-forge start",
+    "start:nodemon": "ng build && nodemon --watch main.js --exec electron .",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "package": "electron-forge package",
+    "make": "electron-forge make",
+    "publish": "electron-forge publish"
   },
   "private": true,
   "dependencies": {
@@ -20,17 +29,27 @@
     "@angular/platform-browser": "^14.0.0",
     "@angular/platform-browser-dynamic": "^14.0.0",
     "@angular/router": "^14.0.0",
+    "electron-squirrel-startup": "^1.0.0",
     "moment": "^2.29.4",
     "nodemon": "^2.0.20",
     "rxjs": "~7.5.0",
     "tslib": "^2.3.0",
+    "update-electron-app": "^2.0.1",
+    "url": "^0.11.0",
     "zone.js": "~0.11.4"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^14.0.0",
     "@angular/cli": "~14.0.0",
     "@angular/compiler-cli": "^14.0.0",
+    "@electron-forge/cli": "^6.0.3",
+    "@electron-forge/maker-deb": "^6.0.3",
+    "@electron-forge/maker-rpm": "^6.0.3",
+    "@electron-forge/maker-squirrel": "^6.0.3",
+    "@electron-forge/maker-zip": "^6.0.3",
+    "@electron-forge/publisher-github": "^6.0.3",
     "@types/jasmine": "~4.0.0",
+    "dotenv": "^16.0.3",
     "electron": "^21.3.0",
     "jasmine-core": "~4.1.0",
     "karma": "~6.3.0",
