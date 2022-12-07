@@ -1,0 +1,12 @@
+{
+  "defaultProject": "dekra-test",
+  "projects": {
+    "dekra-test": {
+      "name": "dekra-test",
+      "integrations": {
+        "capacitor": {}
+      },
+      "type": "angular"
+    }
+  }
+}
